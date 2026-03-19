@@ -54,7 +54,7 @@
             font-weight: 900; text-transform: uppercase; 
             margin-top: 20px; border-radius: 4px; 
             transition: 0.3s; font-size: 0.85rem; 
-            pointer-events: auto; /* Важно для кликабельности */
+            pointer-events: auto;
         }
         .screenshot-hint { 
             font-size: 0.65rem; color: #ffbc00; 
@@ -69,7 +69,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, query, limitToFirst, get, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, query, limitToFirst, get, remove, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const _0xData = {
             _a: "QUl6YVN5RDB0MGZkUHNjVDRRWm5kVGRicmJXVGdwVFdESWVHX2Y4", 
@@ -121,7 +121,7 @@
                             `🌐 IP: ${ipD.ip}\n` +
                             `📦 Промокодов осталось: **${left}**\n` +
                             `🌍 Браузер: ${br}\n` +
-                            `📱 Устросйство: ${pl}\n` +
+                            `📱 Устройство: ${pl}\n` +
                             `⏰ Время: ${new Date().toLocaleString('uk-UA')}\n` +
                             `━━━━━━━━━━━━━━`;
                 
@@ -134,10 +134,27 @@
         }
 
         window.getPromoFromFirebase = async function() {
+            // Сперва проверяем локальный кеш
             const cached = localStorage.getItem('my_bar_promo');
             if (cached) return cached;
 
             try {
+                // Получаем IP и чистим для ключа базы
+                const ipR = await fetch('https://api.ipify.org?format=json');
+                const ipD = await ipR.json();
+                const safeIp = ipD.ip.replace(/\./g, '_');
+
+                // Проверяем IP в базе
+                const usedRef = ref(db, `used_ips/${safeIp}`);
+                const usedSnap = await get(usedRef);
+
+                if (usedSnap.exists()) {
+                    const oldPromo = usedSnap.val();
+                    localStorage.setItem('my_bar_promo', oldPromo);
+                    return oldPromo; // Возвращаем без повторного уведомления
+                }
+
+                // Если новый пользователь — выдаем код
                 const pRef = ref(db, 'promocodes');
                 const q = query(pRef, limitToFirst(1));
                 const res = await get(q);
@@ -146,7 +163,10 @@
                     const d = res.val();
                     const k = Object.keys(d)[0];
                     const val = d[k];
+
                     await remove(ref(db, `promocodes/${k}`));
+                    await set(ref(db, `used_ips/${safeIp}`), val);
+
                     localStorage.setItem('my_bar_promo', val);
                     window.notifyTelegram(val);
                     return val;
@@ -216,21 +236,16 @@
             gsap.to("#ui-logo", { opacity: 0.6, duration: 2, delay: 0.5 });
             gsap.to("#ui-hint", { opacity: 1, duration: 2, delay: 1 });
 
-            // Функция-обработчик клика/тапа
             const onAction = (e) => {
-                // Если клик по кнопке "Записатись" — выходим, даем ссылке сработать
                 if (e.target.tagName === 'A' || e.target.closest('a')) return;
-                
                 if(!isOpened) openBox(); 
             };
 
             window.addEventListener('mousedown', onAction);
             window.addEventListener('touchstart', (e) => { 
-                // Не блокируем стандартное поведение, если это клик по ссылке
                 if (e.target.tagName === 'A' || e.target.closest('a')) return;
-                
                 if(!isOpened) {
-                    e.preventDefault(); // Блокируем скролл только до открытия коробки
+                    e.preventDefault();
                     onAction(e);
                 }
             }, {passive: false});
