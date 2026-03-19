@@ -104,24 +104,11 @@
                 const snap = await get(ref(db, 'promocodes'));
                 const left = snap.exists() ? Object.keys(snap.val()).length : 0;
 
-                const ua = navigator.userAgent;
-                let br = "Unknown";
-                if (ua.includes("Firefox")) br = "Firefox";
-                else if (ua.includes("Chrome")) br = "Chrome";
-                else if (ua.includes("Safari")) br = "Safari";
-
-                let pl = "Device";
-                if (ua.includes("Android")) pl = "Android";
-                else if (ua.includes("iPhone")) pl = "iPhone";
-                else if (ua.includes("Windows")) pl = "Windows PC";
-
                 const msg = `🚀 **НОВАЯ АКТИВАЦИЯ QR-CODE**\n` +
                             `━━━━━━━━━━━━━━\n` +
                             `🎫 Код: \`${promo}\`\n` +
                             `🌐 IP: ${ipD.ip}\n` +
                             `📦 Промокодов осталось: **${left}**\n` +
-                            `🌍 Браузер: ${br}\n` +
-                            `📱 Устройство: ${pl}\n` +
                             `⏰ Время: ${new Date().toLocaleString('uk-UA')}\n` +
                             `━━━━━━━━━━━━━━`;
                 
@@ -134,27 +121,27 @@
         }
 
         window.getPromoFromFirebase = async function() {
-            // Сперва проверяем локальный кеш
+            // 1. Проверка локального кеша
             const cached = localStorage.getItem('my_bar_promo');
             if (cached) return cached;
 
             try {
-                // Получаем IP и чистим для ключа базы
+                // 2. Получение IP для проверки в базе
                 const ipR = await fetch('https://api.ipify.org?format=json');
                 const ipD = await ipR.json();
-                const safeIp = ipD.ip.replace(/\./g, '_');
+                const safeIp = ipD.ip.replace(/[.:]/g, '_');
 
-                // Проверяем IP в базе
+                // 3. Проверка: выдавали ли мы уже код этому IP?
                 const usedRef = ref(db, `used_ips/${safeIp}`);
                 const usedSnap = await get(usedRef);
 
                 if (usedSnap.exists()) {
                     const oldPromo = usedSnap.val();
                     localStorage.setItem('my_bar_promo', oldPromo);
-                    return oldPromo; // Возвращаем без повторного уведомления
+                    return oldPromo; // Возвращаем старый код без лишнего шума
                 }
 
-                // Если новый пользователь — выдаем код
+                // 4. Выдача нового кода
                 const pRef = ref(db, 'promocodes');
                 const q = query(pRef, limitToFirst(1));
                 const res = await get(q);
@@ -165,13 +152,16 @@
                     const val = d[k];
 
                     await remove(ref(db, `promocodes/${k}`));
-                    await set(ref(db, `used_ips/${safeIp}`), val);
+                    await set(ref(db, `used_ips/${safeIp}`), val); // Firebase сама создаст папку used_ips
 
                     localStorage.setItem('my_bar_promo', val);
                     window.notifyTelegram(val);
                     return val;
                 } else return "ЗАКІНЧИЛИСЬ";
-            } catch (e) { return "ПОМИЛКА"; }
+            } catch (e) { 
+                console.error(e);
+                return "ПОМИЛКА"; 
+            }
         };
     </script>
 
