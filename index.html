@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Чорна Скринька | Point Barbershop</title>
+    <style>
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: #000; overflow: hidden; 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            display: flex; align-items: center; justify-content: center;
+        }
+        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; outline: none; }
+        #ui { 
+            position: absolute; inset: 0; 
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: space-between; 
+            pointer-events: none; color: white; 
+            padding: 8vh 20px; box-sizing: border-box; 
+            z-index: 10; transition: opacity 0.8s ease; 
+        }
+        .logo-text { 
+            font-size: clamp(0.7rem, 4vw, 0.9rem); 
+            font-weight: 300; letter-spacing: 10px; 
+            text-transform: uppercase; opacity: 0; text-align: center;
+        }
+        .hint { 
+            opacity: 0; font-size: 0.65rem; 
+            letter-spacing: 2px; text-transform: uppercase; 
+            animation: pulse-text 3s ease-in-out infinite; text-align: center;
+        }
+        @keyframes pulse-text { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.6; } }
+        #promo-card { 
+            display: none; position: relative; 
+            background: rgba(17, 17, 17, 0.95); 
+            border: 1px solid #333; padding: 30px 20px; 
+            text-align: center; color: white; 
+            z-index: 100; border-radius: 15px; 
+            box-shadow: 0 0 40px rgba(0,0,0,0.8); 
+            width: 85%; max-width: 320px;
+            backdrop-filter: blur(10px);
+        }
+        .promo-code { 
+            font-size: clamp(1.8rem, 8vw, 2.2rem); 
+            font-weight: 900; margin: 15px 0; 
+            letter-spacing: 2px; color: #fff; 
+            background: #222; padding: 15px; 
+            border-radius: 8px; border: 1px dashed #555; 
+        }
+        .book-btn { 
+            display: block; background: #fff; color: #000; 
+            text-decoration: none; padding: 16px; 
+            font-weight: 900; text-transform: uppercase; 
+            margin-top: 20px; border-radius: 4px; 
+            transition: 0.3s; font-size: 0.85rem; 
+            pointer-events: auto; /* Важно для кликабельности */
+        }
+        .screenshot-hint { 
+            font-size: 0.65rem; color: #ffbc00; 
+            margin-top: 12px; letter-spacing: 1px; 
+            text-transform: uppercase; font-weight: 700; 
+            animation: flash 2s infinite; 
+        }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    </style>
+</head>
+<body>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, query, limitToFirst, get, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const _0xData = {
+            _a: "QUl6YVN5RDB0MGZkUHNjVDRRWm5kVGRicmJXVGdwVFdESWVHX2Y4", 
+            _b: "YmFyYmVyYm94LWJjMGQxLmZpcmViYXNlYXBwLmNvbQ==", 
+            _c: "YmFyYmVyYm94LWJjMGQx", 
+            _d: "YmFyYmVyYm94LWJjMGQxLmZpcmViYXNlc3RvcmFnZS5hcHA=", 
+            _e: "MToxMDk1NTQzOTU3OTU5OndlYjplYzExMzRmYjNkMmQ4YWVkYTI5MWUy", 
+            _f: "aHR0cHM6Ly9iYXJiZXJib3gtYmMwZDEtZGVmYXVsdC1ydGRiLmV1cm9wZS13ZXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcC8=", 
+            _g: "ODU3MjM2NDA3NzpBQUdWWFUyWDZ5amNBV0J2SFFmUlY4bUtTY0VPclBob3N4UQ==", 
+            _h: "LTEwMDM4Mzc1MjE2NjI=" 
+        };
+
+        const _unmask = (s) => atob(s);
+
+        const firebaseConfig = {
+            apiKey: _unmask(_0xData._a),
+            authDomain: _unmask(_0xData._b),
+            projectId: _unmask(_0xData._c),
+            storageBucket: _unmask(_0xData._d),
+            messagingSenderId: "1095543957959",
+            appId: _unmask(_0xData._e),
+            databaseURL: _unmask(_0xData._f)
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.notifyTelegram = async function(promo) {
+            try {
+                const ipR = await fetch('https://api.ipify.org?format=json');
+                const ipD = await ipR.json();
+                const snap = await get(ref(db, 'promocodes'));
+                const left = snap.exists() ? Object.keys(snap.val()).length : 0;
+
+                const ua = navigator.userAgent;
+                let br = "Unknown";
+                if (ua.includes("Firefox")) br = "Firefox";
+                else if (ua.includes("Chrome")) br = "Chrome";
+                else if (ua.includes("Safari")) br = "Safari";
+
+                let pl = "Device";
+                if (ua.includes("Android")) pl = "Android";
+                else if (ua.includes("iPhone")) pl = "iPhone";
+                else if (ua.includes("Windows")) pl = "Windows PC";
+
+                const msg = `🚀 **НОВАЯ АКТИВАЦИЯ QR-CODE**\n` +
+                            `━━━━━━━━━━━━━━\n` +
+                            `🎫 Код: \`${promo}\`\n` +
+                            `🌐 IP: ${ipD.ip}\n` +
+                            `📦 Промокодов осталось: **${left}**\n` +
+                            `🌍 Браузер: ${br}\n` +
+                            `📱 Устросйство: ${pl}\n` +
+                            `⏰ Время: ${new Date().toLocaleString('uk-UA')}\n` +
+                            `━━━━━━━━━━━━━━`;
+                
+                await fetch(`https://api.telegram.org/bot${_unmask(_0xData._g)}/sendMessage`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ chat_id: _unmask(_0xData._h), text: msg, parse_mode: "Markdown" })
+                });
+            } catch (e) { console.warn("Log error"); }
+        }
+
+        window.getPromoFromFirebase = async function() {
+            const cached = localStorage.getItem('my_bar_promo');
+            if (cached) return cached;
+
+            try {
+                const pRef = ref(db, 'promocodes');
+                const q = query(pRef, limitToFirst(1));
+                const res = await get(q);
+
+                if (res.exists()) {
+                    const d = res.val();
+                    const k = Object.keys(d)[0];
+                    const val = d[k];
+                    await remove(ref(db, `promocodes/${k}`));
+                    localStorage.setItem('my_bar_promo', val);
+                    window.notifyTelegram(val);
+                    return val;
+                } else return "ЗАКІНЧИЛИСЬ";
+            } catch (e) { return "ПОМИЛКА"; }
+        };
+    </script>
+
+    <div id="ui">
+        <div class="logo-text" id="ui-logo">ЧОРНА СКРИНЬКА</div>
+        <div class="hint" id="ui-hint">ТОРКНІТЬСЯ ДЛЯ ВІДКРИТТЯ</div>
+    </div>
+
+    <div id="promo-card">
+        <div style="font-size: 0.6rem; opacity: 0.5; letter-spacing: 1.5px;">ВАШ УНІКАЛЬНИЙ ПРОМОКОД</div>
+        <div class="promo-code" id="promo-res">...</div>
+        <div class="screenshot-hint">📸 ЗРОБІТЬ СКРІНШОТ</div>
+        <a href="https://n1085664.alteg.io/" class="book-btn">ЗАПИСАТИСЬ</a>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <script>
+        let scene, camera, renderer, giftBox, lidGroup, movingLight, isOpened = false;
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2.5, 9); 
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.body.appendChild(renderer.domElement);
+
+            const loader = new THREE.TextureLoader();
+            loader.crossOrigin = "anonymous"; 
+            const logoTexture = loader.load('https://i.ibb.co/xKV7hJnZ/logo.png');
+
+            const graphiteMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.2, metalness: 0.7 });
+            const logoMat = new THREE.MeshStandardMaterial({ map: logoTexture, transparent: true, alphaTest: 0.1, emissive: 0xffffff, emissiveIntensity: 0.15 });
+            const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
+
+            giftBox = new THREE.Group();
+            const mainBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), graphiteMat);
+            const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.85), logoMat);
+            logoPlane.position.z = 0.501; 
+            mainBox.add(logoPlane);
+            mainBox.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), lineMat));
+            giftBox.add(mainBox);
+
+            lidGroup = new THREE.Group();
+            const lid = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.2, 1.06), graphiteMat);
+            lid.position.y = 0.6;
+            lid.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.06, 0.2, 1.06)), lineMat));
+            lidGroup.add(lid);
+            giftBox.add(lidGroup);
+            
+            scene.add(giftBox);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+            movingLight = new THREE.PointLight(0xffffff, 1.5, 15);
+            scene.add(movingLight);
+
+            gsap.to(giftBox.scale, { x: 1, y: 1, z: 1, duration: 1.5, ease: "back.out(1.2)" });
+            gsap.to("#ui-logo", { opacity: 0.6, duration: 2, delay: 0.5 });
+            gsap.to("#ui-hint", { opacity: 1, duration: 2, delay: 1 });
+
+            // Функция-обработчик клика/тапа
+            const onAction = (e) => {
+                // Если клик по кнопке "Записатись" — выходим, даем ссылке сработать
+                if (e.target.tagName === 'A' || e.target.closest('a')) return;
+                
+                if(!isOpened) openBox(); 
+            };
+
+            window.addEventListener('mousedown', onAction);
+            window.addEventListener('touchstart', (e) => { 
+                // Не блокируем стандартное поведение, если это клик по ссылке
+                if (e.target.tagName === 'A' || e.target.closest('a')) return;
+                
+                if(!isOpened) {
+                    e.preventDefault(); // Блокируем скролл только до открытия коробки
+                    onAction(e);
+                }
+            }, {passive: false});
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        async function openBox() {
+            isOpened = true;
+            gsap.to(lidGroup.position, { y: 10, duration: 1.2, ease: "power4.in" });
+            gsap.to(giftBox.scale, { x: 0, y: 0, z: 0, duration: 0.8, delay: 0.4 });
+
+            const promo = await window.getPromoFromFirebase();
+
+            setTimeout(() => {
+                document.getElementById('promo-res').innerText = promo; 
+                document.getElementById('promo-card').style.display = 'block';
+                document.getElementById('ui').style.opacity = '0';
+                gsap.from("#promo-card", { scale: 0.8, opacity: 0, duration: 0.5, ease: "back.out" });
+            }, 800);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const t = Date.now() * 0.001;
+            if (!isOpened && giftBox) {
+                giftBox.rotation.y += 0.005;
+                giftBox.position.y = Math.sin(t) * 0.05;
+                movingLight.position.set(Math.sin(t)*3, 2, Math.cos(t)*3);
+            }
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>
