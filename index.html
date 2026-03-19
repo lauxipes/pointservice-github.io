@@ -71,6 +71,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, query, limitToFirst, get, remove, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+        // Зашифровані дані (API Key, URL бази, Токен бота тощо)
         const _0xData = {
             _a: "QUl6YVN5RDB0MGZkUHNjVDRRWm5kVGRicmJXVGdwVFdESWVHX2Y4", 
             _b: "YmFyYmVyYm94LWJjMGQxLmZpcmViYXNlYXBwLmNvbQ==", 
@@ -97,51 +98,74 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // ФУНКЦІЯ ПОВІДОМЛЕННЯ (З ЛОГАМИ БРАУЗЕРА ТА ПРИСТРОЮ)
         window.notifyTelegram = async function(promo) {
             try {
+                // 1. Отримуємо IP
                 const ipR = await fetch('https://api.ipify.org?format=json');
                 const ipD = await ipR.json();
+                
+                // 2. Отримуємо кількість кодів, що залишилися
                 const snap = await get(ref(db, 'promocodes'));
                 const left = snap.exists() ? Object.keys(snap.val()).length : 0;
 
+                // 3. Визначаємо БРАУЗЕР та ПРИСТРІЙ (User Agent)
+                const ua = navigator.userAgent;
+                let browser = "Інший";
+                if (ua.includes("Firefox")) browser = "Firefox";
+                else if (ua.includes("SamsungBrowser")) browser = "Samsung Browser";
+                else if (ua.includes("Opera") || ua.includes("OPR")) browser = "Opera";
+                else if (ua.includes("Chrome")) browser = "Chrome";
+                else if (ua.includes("Safari")) browser = "Safari";
+
+                let platform = "Пристрій";
+                if (ua.includes("Android")) platform = "Android 📱";
+                else if (ua.includes("iPhone") || ua.includes("iPad")) platform = "iOS (iPhone/iPad) 🍎";
+                else if (ua.includes("Windows")) platform = "Windows PC 💻";
+                else if (ua.includes("Macintosh")) platform = "MacBook/iMac 🖥️";
+
+                // 4. Формуємо повідомлення
                 const msg = `🚀 **НОВАЯ АКТИВАЦИЯ QR-CODE**\n` +
                             `━━━━━━━━━━━━━━\n` +
                             `🎫 Код: \`${promo}\`\n` +
                             `🌐 IP: ${ipD.ip}\n` +
                             `📦 Промокодов осталось: **${left}**\n` +
+                            `🌍 Браузер: **${browser}**\n` +
+                            `📱 Устройство: **${platform}**\n` +
                             `⏰ Время: ${new Date().toLocaleString('uk-UA')}\n` +
                             `━━━━━━━━━━━━━━`;
                 
+                // 5. Відправка в Telegram
                 await fetch(`https://api.telegram.org/bot${_unmask(_0xData._g)}/sendMessage`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ chat_id: _unmask(_0xData._h), text: msg, parse_mode: "Markdown" })
                 });
-            } catch (e) { console.warn("Log error"); }
+            } catch (e) { console.warn("Log error:", e); }
         }
 
         window.getPromoFromFirebase = async function() {
-            // 1. Проверка локального кеша
+            // 1. Перевірка локального кешу
             const cached = localStorage.getItem('my_bar_promo');
             if (cached) return cached;
 
             try {
-                // 2. Получение IP для проверки в базе
+                // 2. Отримання IP для перевірки в базі
                 const ipR = await fetch('https://api.ipify.org?format=json');
                 const ipD = await ipR.json();
-                const safeIp = ipD.ip.replace(/[.:]/g, '_');
+                const safeIp = ipD.ip.replace(/[.:]/g, '_'); // Заміна крапок/двокрапок для IPv6
 
-                // 3. Проверка: выдавали ли мы уже код этому IP?
+                // 3. Перевірка: чи видавали ми вже код цьому IP?
                 const usedRef = ref(db, `used_ips/${safeIp}`);
                 const usedSnap = await get(usedRef);
 
                 if (usedSnap.exists()) {
                     const oldPromo = usedSnap.val();
                     localStorage.setItem('my_bar_promo', oldPromo);
-                    return oldPromo; // Возвращаем старый код без лишнего шума
+                    return oldPromo; // Повертаємо старий код без повідомлення в ТГ
                 }
 
-                // 4. Выдача нового кода
+                // 4. Видача нового коду
                 const pRef = ref(db, 'promocodes');
                 const q = query(pRef, limitToFirst(1));
                 const res = await get(q);
@@ -152,10 +176,10 @@
                     const val = d[k];
 
                     await remove(ref(db, `promocodes/${k}`));
-                    await set(ref(db, `used_ips/${safeIp}`), val); // Firebase сама создаст папку used_ips
+                    await set(ref(db, `used_ips/${safeIp}`), val); // Записуємо зв'язок IP -> Код
 
                     localStorage.setItem('my_bar_promo', val);
-                    window.notifyTelegram(val);
+                    window.notifyTelegram(val); // Повідомляємо в ТГ про першу видачу
                     return val;
                 } else return "ЗАКІНЧИЛИСЬ";
             } catch (e) { 
@@ -181,6 +205,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <script>
+        // Сценарій Three.js та GSAP (без змін)
         let scene, camera, renderer, giftBox, lidGroup, movingLight, isOpened = false;
 
         function init() {
