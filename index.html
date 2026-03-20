@@ -24,6 +24,9 @@
             font-size: clamp(0.7rem, 4vw, 0.9rem); 
             font-weight: 300; letter-spacing: 10px; 
             text-transform: uppercase; opacity: 0; text-align: center;
+            opacity: 0; /* оставляем 0 для старта анимации */
+            color: #ffffff; /* убедись, что тут белый */
+        }
         }
         .hint { 
             opacity: 0; font-size: 0.65rem; 
@@ -224,12 +227,12 @@
             const logoTexture = loader.load('https://i.ibb.co/xKV7hJnZ/logo.png');
 
             const graphiteMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.2, metalness: 0.7 });
-            const logoMat = new THREE.MeshStandardMaterial({ map: logoTexture, transparent: true, alphaTest: 0.1, emissive: 0xffffff, emissiveIntensity: 0.15 });
+            const logoMat = new THREE.MeshStandardMaterial({ map: logoTexture, transparent: true, alphaTest: 0.1, emissive: 0xffffff, emissiveIntensity: 0.5 });
             const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
 
             giftBox = new THREE.Group();
             const mainBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), graphiteMat);
-            const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.85), logoMat);
+            const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.98, 0.98), logoMat);
             logoPlane.position.z = 0.501; 
             mainBox.add(logoPlane);
             mainBox.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), lineMat));
@@ -248,7 +251,7 @@
             scene.add(movingLight);
 
             gsap.to(giftBox.scale, { x: 1, y: 1, z: 1, duration: 1.5, ease: "back.out(1.2)" });
-            gsap.to("#ui-logo", { opacity: 0.6, duration: 2, delay: 0.5 });
+            gsap.to("#ui-logo", { opacity: 1, duration: 2, delay: 0.5 }); 
             gsap.to("#ui-hint", { opacity: 1, duration: 2, delay: 1 });
 
             const onAction = (e) => {
