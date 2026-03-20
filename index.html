@@ -9,9 +9,10 @@
             margin: 0; padding: 0; width: 100%; height: 100%; 
             background: #000; overflow: hidden; 
             font-family: 'Inter', -apple-system, sans-serif; 
-            display: flex; align-items: center; justify-content: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; outline: none; }
+        
         #ui { 
             position: absolute; inset: 0; 
             display: flex; flex-direction: column; 
@@ -21,56 +22,66 @@
             z-index: 10; transition: opacity 0.8s ease; 
         }
         .logo-text { 
-            font-size: clamp(0.7rem, 4vw, 0.9rem); 
-            font-weight: 300; letter-spacing: 10px; 
+            font-size: clamp(0.9rem, 5vw, 1.2rem); 
+            font-weight: 300; letter-spacing: 8px; 
             text-transform: uppercase; opacity: 0; text-align: center;
-            opacity: 0; /* оставляем 0 для старта анимации */
-            color: #ffffff; /* убедись, что тут белый */
-        }
+            color: #ffffff;
         }
         .hint { 
-            opacity: 0; font-size: 0.65rem; 
+            opacity: 0; font-size: 0.75rem; 
             letter-spacing: 2px; text-transform: uppercase; 
             animation: pulse-text 3s ease-in-out infinite; text-align: center;
         }
         @keyframes pulse-text { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.6; } }
+
         #promo-card { 
             display: none; position: relative; 
             background: rgba(17, 17, 17, 0.95); 
-            border: 1px solid #333; padding: 30px 20px; 
+            border: 1px solid #333; padding: 35px 20px; 
             text-align: center; color: white; 
             z-index: 100; border-radius: 15px; 
             box-shadow: 0 0 40px rgba(0,0,0,0.8); 
             width: 85%; max-width: 320px;
             backdrop-filter: blur(10px);
         }
+
         .promo-code { 
-            font-size: clamp(1.8rem, 8vw, 2.2rem); 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            font-size: 2.2rem; 
             font-weight: 900; margin: 15px 0; 
-            letter-spacing: 2px; color: #fff; 
-            background: #222; padding: 15px; 
-            border-radius: 8px; border: 1px dashed #555; 
+            letter-spacing: 1px; color: #fff; 
+            background: #222; padding: 18px 10px; 
+            border-radius: 10px; border: 1px dashed #555; 
         }
+        .promo-code .percent {
+            font-weight: 700;
+            color: #fff;
+        }
+
         .book-btn { 
-        display: block; 
-        background: #fff; 
-        color: #000; 
-        text-decoration: none; 
-        padding: 20px; /* Було 16px */
-        font-weight: 900; 
-        text-transform: uppercase; 
-        margin-top: 25px; 
-        border-radius: 8px; 
-        font-size: 1rem; /* Було 0.85rem */
+            display: block; background: #fff; color: #000; 
+            text-decoration: none; padding: 18px; 
+            font-weight: 900; text-transform: uppercase; 
+            margin-top: 20px; border-radius: 8px; 
+            transition: 0.3s; font-size: 1rem; 
+            pointer-events: auto;
         }
+
         .screenshot-hint { 
-        font-size: 0.8rem; /* Було 0.65rem */
-        color: #ffbc00; 
-        margin-top: 15px; 
-        letter-spacing: 1px; 
-        text-transform: uppercase; 
-        font-weight: 800; 
-        animation: flash 2s infinite; 
+            display: none;
+            position: relative;
+            z-index: 101;
+            font-size: 0.8rem; 
+            color: #ffbc00; 
+            margin-top: 25px; 
+            letter-spacing: 1px; 
+            text-transform: uppercase; 
+            font-weight: 800; 
+            animation: flash 2s infinite; 
+            text-align: center;
         }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     </style>
@@ -81,7 +92,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, query, limitToFirst, get, remove, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Зашифровані дані (API Key, URL бази, Токен бота тощо)
         const _0xData = {
             _a: "QUl6YVN5RDB0MGZkUHNjVDRRWm5kVGRicmJXVGdwVFdESWVHX2Y4", 
             _b: "YmFyYmVyYm94LWJjMGQxLmZpcmViYXNlYXBwLmNvbQ==", 
@@ -108,18 +118,12 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // ФУНКЦІЯ ПОВІДОМЛЕННЯ (З ЛОГАМИ БРАУЗЕРА ТА ПРИСТРОЮ)
         window.notifyTelegram = async function(promo) {
             try {
-                // 1. Отримуємо IP
                 const ipR = await fetch('https://api.ipify.org?format=json');
                 const ipD = await ipR.json();
-                
-                // 2. Отримуємо кількість кодів, що залишилися
                 const snap = await get(ref(db, 'promocodes'));
                 const left = snap.exists() ? Object.keys(snap.val()).length : 0;
-
-                // 3. Визначаємо БРАУЗЕР та ПРИСТРІЙ (User Agent)
                 const ua = navigator.userAgent;
                 let browser = "Інший";
                 if (ua.includes("Firefox")) browser = "Firefox";
@@ -134,7 +138,6 @@
                 else if (ua.includes("Windows")) platform = "Windows PC 💻";
                 else if (ua.includes("Macintosh")) platform = "MacBook/iMac 🖥️";
 
-                // 4. Формуємо повідомлення
                 const msg = `🚀 **НОВАЯ АКТИВАЦИЯ QR-CODE**\n` +
                             `━━━━━━━━━━━━━━\n` +
                             `🎫 Код: \`${promo}\`\n` +
@@ -145,7 +148,6 @@
                             `⏰ Время: ${new Date().toLocaleString('uk-UA')}\n` +
                             `━━━━━━━━━━━━━━`;
                 
-                // 5. Відправка в Telegram
                 await fetch(`https://api.telegram.org/bot${_unmask(_0xData._g)}/sendMessage`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -155,47 +157,33 @@
         }
 
         window.getPromoFromFirebase = async function() {
-            // 1. Перевірка локального кешу
             const cached = localStorage.getItem('my_bar_promo');
             if (cached) return cached;
-
             try {
-                // 2. Отримання IP для перевірки в базі
                 const ipR = await fetch('https://api.ipify.org?format=json');
                 const ipD = await ipR.json();
-                const safeIp = ipD.ip.replace(/[.:]/g, '_'); // Заміна крапок/двокрапок для IPv6
-
-                // 3. Перевірка: чи видавали ми вже код цьому IP?
+                const safeIp = ipD.ip.replace(/[.:]/g, '_');
                 const usedRef = ref(db, `used_ips/${safeIp}`);
                 const usedSnap = await get(usedRef);
-
                 if (usedSnap.exists()) {
                     const oldPromo = usedSnap.val();
                     localStorage.setItem('my_bar_promo', oldPromo);
-                    return oldPromo; // Повертаємо старий код без повідомлення в ТГ
+                    return oldPromo;
                 }
-
-                // 4. Видача нового коду
                 const pRef = ref(db, 'promocodes');
                 const q = query(pRef, limitToFirst(1));
                 const res = await get(q);
-
                 if (res.exists()) {
                     const d = res.val();
                     const k = Object.keys(d)[0];
                     const val = d[k];
-
                     await remove(ref(db, `promocodes/${k}`));
-                    await set(ref(db, `used_ips/${safeIp}`), val); // Записуємо зв'язок IP -> Код
-
+                    await set(ref(db, `used_ips/${safeIp}`), val);
                     localStorage.setItem('my_bar_promo', val);
-                    window.notifyTelegram(val); // Повідомляємо в ТГ про першу видачу
+                    window.notifyTelegram(val);
                     return val;
-                } else return "ЗАКІНЧИЛИСЬ";
-            } catch (e) { 
-                console.error(e);
-                return "ПОМИЛКА"; 
-            }
+                } else return "EMPTY";
+            } catch (e) { return "ERROR"; }
         };
     </script>
 
@@ -205,28 +193,21 @@
     </div>
 
     <div id="promo-card">
-    <div style="font-size: 0.85rem; opacity: 0.5; letter-spacing: 2px; margin-bottom: 12px; text-transform: uppercase;">
-        Ваш унікальний промокод
+        <div style="font-size: 0.85rem; opacity: 0.5; letter-spacing: 2px; margin-bottom: 12px; text-transform: uppercase;">
+            Ваш унікальний промокод
+        </div>
+        <div class="promo-code" id="promo-res">
+            <span>...</span>
+        </div>
+        <a href="https://n1085664.alteg.io/" class="book-btn">ЗАПИСАТИСЬ</a>
     </div>
-    
-    <div class="promo-code" id="promo-res" style="font-size: 2.2rem; padding: 18px 10px; margin: 10px 0; border-radius: 10px;">
-        ...
-    </div>
-    
-    <div class="screenshot-hint" style="font-size: 0.75rem; color: #ffbc00; margin-top: 15px; font-weight: 800;">
-        📸 ЗРОБІТЬ СКРІНШОТ
-    </div>
-    
-    <a href="https://n1085664.alteg.io/" class="book-btn" style="padding: 18px; font-size: 1rem; margin-top: 20px;">
-        ЗАПИСАТИСЬ
-    </a>
-    </div>
+
+    <div class="screenshot-hint" id="sc-hint">📸 ЗРОБІТЬ СКРІНШОТ</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <script>
-        // Сценарій Three.js та GSAP (без змін)
         let scene, camera, renderer, giftBox, lidGroup, movingLight, isOpened = false;
 
         function init() {
@@ -250,7 +231,7 @@
 
             giftBox = new THREE.Group();
             const mainBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), graphiteMat);
-            const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.98, 0.98), logoMat);
+            const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), logoMat);
             logoPlane.position.z = 0.501; 
             mainBox.add(logoPlane);
             mainBox.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), lineMat));
@@ -281,7 +262,6 @@
             window.addEventListener('touchstart', (e) => { 
                 if (e.target.tagName === 'A' || e.target.closest('a')) return;
                 if(!isOpened) {
-                    e.preventDefault();
                     onAction(e);
                 }
             }, {passive: false});
@@ -303,10 +283,15 @@
             const promo = await window.getPromoFromFirebase();
 
             setTimeout(() => {
-                document.getElementById('promo-res').innerText = promo; 
+                const promoRes = document.getElementById('promo-res');
+                promoRes.innerHTML = `<span>${promo}</span><span class="percent">15%</span>`;
+                
                 document.getElementById('promo-card').style.display = 'block';
+                document.getElementById('sc-hint').style.display = 'block';
                 document.getElementById('ui').style.opacity = '0';
+                
                 gsap.from("#promo-card", { scale: 0.8, opacity: 0, duration: 0.5, ease: "back.out" });
+                gsap.from("#sc-hint", { y: 20, opacity: 0, duration: 0.5, delay: 0.3 });
             }, 800);
         }
 
