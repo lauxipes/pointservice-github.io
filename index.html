@@ -46,7 +46,7 @@
 
         .promo-code { 
             display: flex; align-items: center; justify-content: center;
-            gap: 45px; /* ВАШ ВІДСТУП */
+            gap: 45px; 
             font-size: 2.2rem; 
             font-weight: 900; margin: 15px 0; 
             letter-spacing: 1px; color: #fff; 
@@ -55,25 +55,33 @@
         }
         .promo-code .percent { font-weight: 700; color: #fff; }
 
+        /* ІНСТРУКЦІЯ ВСЕРЕДИНІ ВІКНА */
+        .inner-steps {
+            font-size: 0.75rem;
+            color: #888; /* Сірий колір */
+            margin: 20px 0;
+            line-height: 1.6;
+            text-align: center;
+        }
+        .inner-steps div { margin-bottom: 5px; }
+
         .book-btn { 
             display: block; background: #fff; color: #000; 
             text-decoration: none; padding: 18px; 
             font-weight: 900; text-transform: uppercase; 
-            margin-top: 20px; border-radius: 8px; 
+            border-radius: 8px; 
             transition: 0.3s; font-size: 1rem; 
             pointer-events: auto;
         }
 
-        /* ОНОВЛЕНИЙ СІРИЙ СПИСОК */
-        .instruction-list { 
+        .screenshot-hint { 
             display: none; position: relative; z-index: 101;
-            font-size: 0.8rem; color: #888; /* СІРИЙ КОЛІР */
-            margin-top: 25px; letter-spacing: 0.5px; 
-            text-align: center;
-            width: 85%; max-width: 320px;
-            line-height: 1.6;
+            font-size: 0.8rem; color: #ffbc00; 
+            margin-top: 25px; letter-spacing: 1px; 
+            text-transform: uppercase; font-weight: 800; 
+            animation: flash 2s infinite; text-align: center;
         }
-        .instruction-list div { margin-bottom: 8px; }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     </style>
 </head>
 <body>
@@ -104,67 +112,33 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Покращена функція логів (виправлено відправку)
         window.notifyTelegram = async function(promo) {
             try {
                 let ip = "Unknown";
-                try {
-                    const r = await fetch('https://api.ipify.org?format=json');
-                    const d = await r.json();
-                    ip = d.ip;
-                } catch(e) {}
-
-                const snap = await get(ref(db, 'promocodes'));
-                const left = snap.exists() ? Object.keys(snap.val()).length : 0;
-                
-                const msg = `🚀 **НОВАЯ АКТИВАЦИЯ**\n` +
-                            `━━━━━━━━━━━━━━\n` +
-                            `🎫 Код: \`${promo}\`\n` +
-                            `🌐 IP: ${ip}\n` +
-                            `📦 Осталось: **${left}**\n` +
-                            `⏰ Время: ${new Date().toLocaleString('uk-UA')}\n` +
-                            `━━━━━━━━━━━━━━`;
-                
+                try { const r = await fetch('https://api.ipify.org?format=json'); const d = await r.json(); ip = d.ip; } catch(e) {}
+                const msg = `🚀 **АКТИВАЦІЯ**\n🎫 Код: \`${promo}\`\n🌐 IP: ${ip}\n⏰ ${new Date().toLocaleString('uk-UA')}`;
                 await fetch(`https://api.telegram.org/bot${_unmask(_0xData._g)}/sendMessage`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ chat_id: _unmask(_0xData._h), text: msg, parse_mode: "Markdown" })
                 });
-            } catch (e) { console.warn("TG log error"); }
-        }
+            } catch (e) {}
+        };
 
         window.getPromoFromFirebase = async function() {
             const cached = localStorage.getItem('my_bar_promo');
             if (cached) { window.notifyTelegram(cached + " (Повтор)"); return cached; }
             try {
-                let userIp = "guest_" + Math.floor(Math.random() * 1000000);
-                try {
-                    const ipR = await fetch('https://api.ipify.org?format=json');
-                    const ipD = await ipR.json();
-                    userIp = ipD.ip.replace(/[.:]/g, '_');
-                } catch(e) {}
-
-                const usedRef = ref(db, `used_ips/${userIp}`);
-                const usedSnap = await get(usedRef);
-                if (usedSnap.exists()) {
-                    const oldP = usedSnap.val();
-                    localStorage.setItem('my_bar_promo', oldP);
-                    return oldP;
-                }
-
                 const pRef = ref(db, 'promocodes');
                 const q = query(pRef, limitToFirst(1));
                 const res = await get(q);
                 if (res.exists()) {
-                    const d = res.val();
-                    const k = Object.keys(d)[0];
-                    const val = d[k];
+                    const d = res.val(); const k = Object.keys(d)[0]; const val = d[k];
                     await remove(ref(db, `promocodes/${k}`));
-                    await set(ref(db, `used_ips/${userIp}`), val);
                     localStorage.setItem('my_bar_promo', val);
                     window.notifyTelegram(val);
                     return val;
-                } else return "EMPTY";
+                }
+                return "POINT";
             } catch (e) { return "ERROR"; }
         };
     </script>
@@ -178,16 +152,22 @@
         <div style="font-size: 0.85rem; opacity: 0.5; letter-spacing: 2px; margin-bottom: 12px; text-transform: uppercase;">
             Ваш унікальний промокод
         </div>
+        
         <div class="promo-code" id="promo-res">
             <span>...</span>
         </div>
+
+        <div class="inner-steps">
+            <div>📲 Натисніть кнопку «Записатись»</div>
+            <div>🕒 Оберіть зручний час та послугу</div>
+            <div>📍 Прийдіть у барбершоп</div>
+        </div>
+
         <a href="https://n1422350.alteg.io/company/1351341/personal/menu?o=" class="book-btn">ЗАПИСАТИСЬ</a>
     </div>
 
-    <div class="instruction-list" id="sc-hint">
-        <div>📲 Натисніть кнопку «Записатись»</div>
-        <div>🕒 Оберіть зручний час та послугу</div>
-        <div>📍 Прийдіть до нас</div>
+    <div class="screenshot-hint" id="sc-hint">
+        📸 ЗРОБІТЬ СКРІНШОТ ФЛАЄРА
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -216,8 +196,6 @@
 
             giftBox = new THREE.Group();
             const mainBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), graphiteMat);
-            
-            /* ЛОГОТИП 1.3 */
             const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), logoMat);
             logoPlane.position.z = 0.501; 
             mainBox.add(logoPlane);
